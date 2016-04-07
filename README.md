@@ -1,3 +1,3 @@
-# widevine-auto-updater
+# Chromium Widevine auto updater
 ------
-Auto-updater for chromium-widevine in the http://voidlinux.eu distro
+Auto-updater for the chromium-widevine package in the http://voidlinux.eu distro repo
