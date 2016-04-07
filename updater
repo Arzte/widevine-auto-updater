@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# Define Varibles
+
+workdir=/home/benjamin/git-projects/void-packages
+template=${workdir}/srcpkgs/chromium-widevine/template
+chrome=chromium-widevine
+branch=widevine-update
+
+# Make note of the current dir.
+touch /home/benjamin/predir.txt && echo ${PWD} > /home/benjamin/predir.txt # Note the current dir
+returnToDir=$(cat /home/benjamin/predir.txt)          # Used to get the last dir, needs to be after the touch command
+
+# Make Sure everything is updated
+
+cd ${workdir}                               
+hub checkout master
+hub pull
+hub checkout ${branch}
+
+# Start Checking chrome versions
+
+# Check Chrome version
+lastVersion=$(cat ${template} | grep version= | sed 's/version=//g')
+currentVersion=$(wget -qO- https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm | head -c96 | strings | rev | awk -F"[:-]" '/emorhc/ { print $1 "." $2 }' | rev)
+
+# Check the Checksum's
+lastChecksum=$(cat ${template} | grep checksum= | sed 's/checksum="//g' | sed 's/"//g')
+mkdir ${workdir}/tmp
+wget -O /home/benjamin/git-projects/void-packages/tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+currentChecksum=$(sha256sum ${workdir}/tmp/google-chrome.deb | awk '{print $1}')
+
+# Output the checksum
+echo ${currentChecksum}
+
+# Remove the tmp dir, no longer needed
+rm -R ${workdir}/tmp
+
+# Decide if the varibles are the same or not
+
+if [[ "${lastVersion}" != "${currentVersion}" ]] && [[ "${lastChecksum}" != "${currentChecksum}" ]]; 
+then
+   # Replace the older version and checksum with the new ones
+   sed -i "s/${lastVersion}/${currentVersion}/" ${template}
+   sed -i "s/${lastChecksum}/${currentChecksum}/" ${template}
+   # Add, commit, push, and pr the update
+#   hub add .
+#   hub commit -m "${chrome}: update to ${currentVersion} (bot)"
+#   hub commit --amend
+#   hub push -f TheDoctorsLife ${branch}
+#   ${workdir}/xbps-src install ${chrome}
+#   hub pull-request -b voidlinux:master -h TheDoctorsLife:${branch} -m "${chrome}: update to ${currentVersion} (bot)"
+   echo "Successfully Updated ${chrome} to ${currentVersion}"
+   # Return back to where we were in the beginning
+   cd ${returnToDir}
+   # Remove the txt file
+   rm /home/benjamin/predir.txt
+   exit
+else
+   echo "Already Latest Version";
+   cd ${returnToDir}
+   rm /home/benjamin/predir.txt
+   exit
+fi

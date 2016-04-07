@@ -1,0 +1,15 @@
+#!/bin/bash
+
+gitdir=/home/benjamin/git-projects
+
+rm -Rf ${gitdir}/void-packages
+cd ${gitdir}
+hub clone voidlinux/void-packages
+cd ${gitdir}/void-packages
+hub checkout -b widevine-update
+hub fork
+hub push -f TheDoctorsLife widevine-update
+hub branch --set-upstream-to=origin/master widevine-update
+${gitdir}/void-packages/xbps-src binary-bootstrap
+echo "Git Setp-up successfully"
+cd ..
