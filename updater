@@ -44,12 +44,12 @@ then
    sed -i "s/${lastVersion}/${currentVersion}/" ${template}
    sed -i "s/${lastChecksum}/${currentChecksum}/" ${template}
    # Add, commit, push, and pr the update
-#   hub add .
-#   hub commit -m "${chrome}: update to ${currentVersion} (bot)"
-#   hub commit --amend
-#   hub push -f TheDoctorsLife ${branch}
-#   ${workdir}/xbps-src install ${chrome}
-#   hub pull-request -b voidlinux:master -h TheDoctorsLife:${branch} -m "${chrome}: update to ${currentVersion} (bot)"
+   hub add .
+   hub commit -m "${chrome}: update to ${currentVersion} (bot)"
+   hub commit --amend
+   hub push -f TheDoctorsLife ${branch}
+   ${workdir}/xbps-src install ${chrome}
+   hub pull-request -b voidlinux:master -h TheDoctorsLife:${branch} -m "${chrome}: update to ${currentVersion} (bot)"
    echo "Successfully Updated ${chrome} to ${currentVersion}"
    # Return back to where we were in the beginning
    cd ${returnToDir}
