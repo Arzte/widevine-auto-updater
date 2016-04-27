@@ -6,10 +6,10 @@ workdir=/home/benjamin/git-projects/void-packages
 template=${workdir}/srcpkgs/chromium-widevine/template
 chrome=chromium-widevine
 branch=widevine-update
-
-# Make note of the current dir.
 touch /home/benjamin/predir.txt && echo ${PWD} > /home/benjamin/predir.txt # Note the current dir
 returnToDir=$(cat /home/benjamin/predir.txt)          # Used to get the last dir, needs to be after the touch command
+returnToBranch=$(touch /home/benjamin/currentBranch.txt && git symbolic-ref --short -q HEAD > /home/benjamin/currentBranch.txt)
+lastBranch=$(cat /home/benjamin/currentBranch.txt)
 
 # Make Sure everything is updated
 
@@ -17,6 +17,7 @@ cd ${workdir}
 hub checkout master
 hub pull
 hub checkout ${branch}
+hub pull
 
 # Start Checking chrome versions
 
@@ -27,40 +28,46 @@ currentVersion=$(wget -qO- https://dl.google.com/linux/direct/google-chrome-stab
 # Check the Checksum's
 lastChecksum=$(cat ${template} | grep checksum= | sed 's/checksum="//g' | sed 's/"//g')
 mkdir ${workdir}/tmp
-wget -O /home/benjamin/git-projects/void-packages/tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+wget -quiet -O /home/benjamin/git-projects/void-packages/tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 currentChecksum=$(sha256sum ${workdir}/tmp/google-chrome.deb | awk '{print $1}')
 
-# Output the checksum
-echo ${currentChecksum}
+# echos the versions
+echo "Template Checksum: ${lastVersion}  Site checksum: ${currentVersion}"
+echo "Template version:  ${lastVersion}  Site Version:  ${currentVersion}"
 
 # Remove the tmp dir, no longer needed
 rm -R ${workdir}/tmp
 
-# Decide if the varibles are the same or not
-
+# Compares the last version to the current version
 if [[ "${lastVersion}" != "${currentVersion}" ]] && [[ "${lastChecksum}" != "${currentChecksum}" ]]; 
 then
    # Replace the older version and checksum with the new ones
    sed -i "s/${lastVersion}/${currentVersion}/" ${template}
    sed -i "s/${lastChecksum}/${currentChecksum}/" ${template}
-   # Add, commit, push, and pr the update
+   # Commits, pushes, and pr's the updated template
+   hub add .
+   hub commit -m "${chrome}: update to ${currentVersion} (bot)"
+   hub push -f TheDoctorsLife ${branch}
+   # Executes xbps-src, if it passes then sends a upstream pr. If it fails gives the user two chances to fix it before sending said pr
    if ${workdir}/xbps-src install ${chrome} ; then
-      hub add .
-      hub commit -m "${chrome}: update to ${currentVersion} (bot)"
-#      hub commit --amend
-      hub push -f TheDoctorsLife ${branch}
       hub pull-request -b voidlinux:master -h TheDoctorsLife:${branch} -m "${chrome}: update to ${currentVersion} (bot)"
-      echo "Successfully Updated ${chrome} to ${currentVersion}"
+      echo "Successfully Updated ${chrome} to ${currentVersion}."
+   # In the case that xbps-src errors, this way you can go fix it before going any further
    else
       echo "Something has gone wrong!"
+      read -rsp $'Please figure out what went wrong and fix it. Press any key to continue after doing so.\n' -n 1 key
+      echo "I know what key you pressed $key"
+      read -rsp $'Are you sure you fixed the problem? If so press any key to continue...\n' -n 1 key
+      echo "Continuing..."
+      hub commit --amend -m "${chrome}: update to ${currentVersion} (bot)"
+      hub pull-request -b voidlinux:master -h TheDoctorsLife:${branch} -m "${chrome}: update to ${currentVersion} (bot)"
+      echo "Successfully Updates ${chrome} to ${currentVersion}. (With the users help)"
    fi
-   # Return back to where we were in the beginning
-   cd ${returnToDir}
-   # Remove the txt file
-   rm /home/benjamin/predir.txt
 else
    echo "Already Latest Version";
-   cd ${returnToDir}
-   rm /home/benjamin/predir.txt
 fi
+git checkout ${lastBranch}
+cd ${returnToDir}
+rm /home/benjamin/predir.txt
+rm /home/benjamin/currentBranch.txt
 exit
