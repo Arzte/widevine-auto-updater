@@ -19,20 +19,18 @@ hub pull
 hub checkout ${branch}
 hub pull
 
-# Start Checking chrome versions
-
 # Check Chrome version
 lastVersion=$(cat ${template} | grep version= | sed 's/version=//g')
 currentVersion=$(wget -qO- https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm | head -c96 | strings | rev | awk -F"[:-]" '/emorhc/ { print $1 "." $2 }' | rev)
 
-# Check the Checksum's
+# Check the Checksums
 lastChecksum=$(cat ${template} | grep checksum= | sed 's/checksum="//g' | sed 's/"//g')
 mkdir ${workdir}/tmp
-wget -quiet -O /home/benjamin/git-projects/void-packages/tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+wget --quiet -O /home/benjamin/git-projects/void-packages/tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 currentChecksum=$(sha256sum ${workdir}/tmp/google-chrome.deb | awk '{print $1}')
 
 # echos the versions
-echo "Template Checksum: ${lastVersion}  Site checksum: ${currentVersion}"
+echo "Template Checksum: ${lastChecksum}  Site checksum: ${currentChecksum}"
 echo "Template version:  ${lastVersion}  Site Version:  ${currentVersion}"
 
 # Remove the tmp dir, no longer needed
@@ -59,7 +57,9 @@ then
       echo "I know what key you pressed $key"
       read -rsp $'Are you sure you fixed the problem? If so press any key to continue...\n' -n 1 key
       echo "Continuing..."
+      git add .
       hub commit --amend -m "${chrome}: update to ${currentVersion} (bot)"
+      hub push -f TheDoctorsLife ${branch}
       hub pull-request -b voidlinux:master -h TheDoctorsLife:${branch} -m "${chrome}: update to ${currentVersion} (bot)"
       echo "Successfully Updates ${chrome} to ${currentVersion}. (With the users help)"
    fi

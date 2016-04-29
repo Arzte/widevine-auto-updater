@@ -11,5 +11,5 @@ hub fork
 hub push -f TheDoctorsLife widevine-update
 hub branch --set-upstream-to=origin/master widevine-update
 ${gitdir}/void-packages/xbps-src binary-bootstrap
-echo "Git Setp-up successfully"
+echo "Git Setup successfully"
 cd ..
