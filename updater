@@ -31,8 +31,7 @@ wget --quiet -O ${workdir}/tmp/google-chrome.deb https://dl.google.com/linux/dir
 currentChecksum=$(sha256sum ${workdir}/tmp/google-chrome.deb | awk '{print $1}')
 
 # echos the versions
-echo "Template Checksum: ${lastChecksum}  Site checksum: ${currentChecksum}"
-echo "Template version:  ${lastVersion}  Site Version:  ${currentVersion}"
+echo "Template Checksum: ${lastChecksum}  Site checksum: ${currentChecksum}\n Template version:  ${lastVersion}  Site Version:  ${currentVersion}"
 
 # Remove the tmp dir, no longer needed
 rm -R ${workdir}/tmp
@@ -41,8 +40,7 @@ rm -R ${workdir}/tmp
 if [[ "${lastVersion}" != "${currentVersion}" ]] && [[ "${lastChecksum}" != "${currentChecksum}" ]]; 
 then
    # Replace the older version and checksum with the new ones
-   sed -i "s/${lastVersion}/${currentVersion}/" ${template}
-   sed -i "s/${lastChecksum}/${currentChecksum}/" ${template}
+   sed -i -e "s/${lastVersion}/${currentVersion}/g;s/${lastChecksum}/${currentChecksum}/g" ${template}
    # Commits, pushes, and pr's the updated template
    hub add .
    hub commit -m "${chrome}: update to ${currentVersion} (bot)"
