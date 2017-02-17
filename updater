@@ -2,7 +2,7 @@
 
 # Define Varibles
 
-workdir=/home/benjamin/git-projects/void-packages
+workdir=/home/benjamin/git/void-packages
 template=${workdir}/srcpkgs/chromium-widevine/template
 chrome=chromium-widevine
 branch=widevine-update
@@ -13,20 +13,21 @@ lastBranch=$(cat /home/benjamin/currentBranch.txt)
 
 # Make Sure everything is updated
 
-cd ${workdir}                               
+cd ${workdir}
 hub checkout master
-hub pull
+hub pull --rebase
 hub checkout ${branch}
-hub pull
+hub pull --rebase
 
 # Check Chrome version
 lastVersion=$(cat ${template} | grep version= | sed 's/version=//g')
 currentVersion=$(wget -qO- https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm | head -c96 | strings | rev | awk -F"[:-]" '/emorhc/ { print $1 "." $2 }' | rev)
 
 # Check the Checksums
-lastChecksum=$(cat ${template} | grep checksum= | sed 's/checksum="//g' | sed 's/"//g')
+lastChecksum=$(cat ${template} | grep checksum= | sed 's/checksum=//g')
 mkdir ${workdir}/tmp
-wget --quiet -O /home/benjamin/git-projects/void-packages/tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+echo "Downloading current google-chrome-version in order to get the current checksum."
+wget --quiet -O ${workdir}/tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 currentChecksum=$(sha256sum ${workdir}/tmp/google-chrome.deb | awk '{print $1}')
 
 # echos the versions

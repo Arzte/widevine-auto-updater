@@ -1,6 +1,6 @@
 #!/bin/bash
 
-gitdir=/home/benjamin/git-projects
+gitdir=/home/benjamin/git
 
 rm -Rf ${gitdir}/void-packages
 cd ${gitdir}
