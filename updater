@@ -6,13 +6,19 @@ workdir=/home/benjamin/git/void-packages
 template=${workdir}/srcpkgs/chromium-widevine/template
 chrome=chromium-widevine
 branch=widevine-update
+if [ -f "/home/benjamin/predir.txt" ]; then
+    rm /home/benjamin/predir.txt
+fi
 touch /home/benjamin/predir.txt && echo ${PWD} > /home/benjamin/predir.txt # Note the current dir
-returnToDir=$(cat /home/benjamin/predir.txt)          # Used to get the last dir, needs to be after the touch command
-returnToBranch=$(touch /home/benjamin/currentBranch.txt && git symbolic-ref --short -q HEAD > /home/benjamin/currentBranch.txt)
+lastDir=$(cat /home/benjamin/predir.txt)          # Used to get the last dir, needs to be after the touch command
+if [ -f "/home/benjamin/currentBranch.txt" ]; then
+    rm /home/benjamin/currentBranch.txt
+fi
+touch /home/benjamin/currentBranch.txt && git symbolic-ref --short -q HEAD > /home/benjamin/currentBranch.txt
 lastBranch=$(cat /home/benjamin/currentBranch.txt)
 
 # Make Sure everything is updated
-
+echo "Ensure that the master & widevine branchs are up to date with origin/master."
 cd ${workdir}
 hub checkout master
 hub pull --rebase
@@ -25,7 +31,9 @@ currentVersion=$(wget -qO- https://dl.google.com/linux/direct/google-chrome-stab
 
 # Check the Checksums
 lastChecksum=$(cat ${template} | grep checksum= | sed 's/checksum=//g')
-mkdir ${workdir}/tmp
+if [ ! -d "%{workdir}/tmp" ]; then
+   mkdir ${workdir}/tmp
+fi
 echo "Downloading current google-chrome-version in order to get the current checksum."
 wget --quiet -O ${workdir}/tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 currentChecksum=$(sha256sum ${workdir}/tmp/google-chrome.deb | awk '{print $1}')
@@ -37,36 +45,49 @@ echo "Template Checksum: ${lastChecksum}  Site checksum: ${currentChecksum}\n Te
 rm -R ${workdir}/tmp
 
 # Compares the last version to the current version
-if [[ "${lastVersion}" != "${currentVersion}" ]] && [[ "${lastChecksum}" != "${currentChecksum}" ]]; 
+if [[ "${lastVersion}" != "${currentVersion}" ]] && [[ "${lastChecksum}" != "${currentChecksum}" ]];
 then
-   # Replace the older version and checksum with the new ones
-   sed -i -e "s/${lastVersion}/${currentVersion}/g;s/${lastChecksum}/${currentChecksum}/g" ${template}
-   # Commits, pushes, and pr's the updated template
-   hub add .
-   hub commit -m "${chrome}: update to ${currentVersion} (bot)"
-   hub push -f TheDoctorsLife ${branch}
-   # Executes xbps-src, if it passes then sends a upstream pr. If it fails gives the user two chances to fix it before sending said pr
-   if ${workdir}/xbps-src install ${chrome} ; then
-      hub pull-request -b voidlinux:master -h TheDoctorsLife:${branch} -m "${chrome}: update to ${currentVersion} (bot)"
-      echo "Successfully Updated ${chrome} to ${currentVersion}."
-   # In the case that xbps-src errors, this way you can go fix it before going any further
-   else
-      echo "Something has gone wrong!"
-      read -rsp $'Please figure out what went wrong and fix it. Press any key to continue after doing so.\n' -n 1 key
-      echo "I know what key you pressed $key"
-      read -rsp $'Are you sure you fixed the problem? If so press any key to continue...\n' -n 1 key
-      echo "Continuing..."
-      git add .
-      hub commit --amend -m "${chrome}: update to ${currentVersion} (bot)"
-      hub push -f TheDoctorsLife ${branch}
-      hub pull-request -b voidlinux:master -h TheDoctorsLife:${branch} -m "${chrome}: update to ${currentVersion} (bot)"
-      echo "Successfully Updates ${chrome} to ${currentVersion}. (With the users help)"
-   fi
+    # Replace the older version and checksum with the new ones
+    echo "Looks like there's a new widevine version, updating template."
+    sed -i -e "s/${lastVersion}/${currentVersion}/g;s/${lastChecksum}/${currentChecksum}/g" ${template}
+    sleep 1
+    # Commits, pushes, and pr's the updated template
+    echo "Done."
+    sleep 1
+    echo "Now commiting changes to widevine template and pushing the commit to the SirDoctors remote."
+    hub add ${workdir}/srcpkgs/chromium-widevine/template
+    hub commit -m "${chrome}: update to ${currentVersion} (bot)"
+    hub push -f SirDoctors ${branch}
+    # Executes xbps-src, if it passes then sends a upstream pr. If it fails gives the user two chances to fix it before sending said pr
+    echo "Now checking if the template is valid by packaging it."
+    if ${workdir}/xbps-src pkg ${chrome} ; then
+        echo "Looks like it was a success, sending a pull request to the voidlinux repository."
+        hub pull-request -b voidlinux:master -h SirDoctors:${branch} -m "${chrome}: update to ${currentVersion} (bot)"
+        echo "Successfully Updated ${chrome} to ${currentVersion}."
+    # In the case that xbps-src errors, this way you can go fix it before going any further
+    else
+        echo "Something went wrong when packaging ${chrome}!"
+        echo "Please figure out what went wrong in the bulding and packaging of ${chrome} and fix it."
+        sleep 2
+        read -rsp $'Press any key to continue after doing so.\n' -n 1 key
+        echo "I know what key you pressed $key"
+        read -rsp $'Are you sure you fixed the problem? If so press any key to continue...\n' -n 1 key
+        echo "Alright then.. Continuing..."
+        echo "Amending your fixes to the update commit."
+        git add .
+        hub commit --amend -m "${chrome}: update to ${currentVersion} (bot)"
+        echo "Pushing commit to the SirDoctors remote"
+        hub push -f SirDoctors ${branch}
+        echo "now sending pull-request to the voidlinux repository"
+        hub pull-request -b voidlinux:master -h TheDoctorsLife:${branch} -m "${chrome}: update to ${currentVersion} (bot)"
+        echo "Successfully Updated ${chrome} to ${currentVersion}. (With the your help oc)"
+    fi
 else
-   echo "Already Latest Version";
+    echo "Looks like ${chrome} is already at the latest version.";
 fi
+echo "Returning to previous void-packages branch"
 git checkout ${lastBranch}
-cd ${returnToDir}
+cd ${lastDir}
 rm /home/benjamin/predir.txt
 rm /home/benjamin/currentBranch.txt
 exit
